@@ -137,7 +137,7 @@ exports.createImage = async (req, res) => {
     // Generate the image filename
     const imageFilename = `${StudentName}_${studentId}.JPG`;
     newStudent.Ref_Image_filename = imageFilename;
-    newStudent.Ref_Image_filepath = path.join('C:/Users/CDOT/CIAS_DATA/ENROLL_IMG', imageFilename);
+    newStudent.Ref_Image_filepath = path.join('Home/CDOT/CIAS_DATA/ENROLL_IMG', imageFilename);
 
     // Define source and destination paths for image copy
     const sourcePath = path.join(Image_storage_path, Image_filename);
