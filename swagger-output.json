@@ -281,10 +281,10 @@
                 "StudentName": {
                   "example": "any"
                 },
-                "Param1": {
+                "School_Name": {
                   "example": "any"
                 },
-                "Param2": {
+                "Class_Name": {
                   "example": "any"
                 }
               }
