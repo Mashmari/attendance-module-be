@@ -21,7 +21,7 @@ app.use(cors());
 // Routes
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/mamSchoolStudent', mamSchoolStudentRoutes);
-app.use('/api/mamAttendance', mamAttendanceRoutes);
+app.use('/mam', mamAttendanceRoutes);
 app.use('/api', matchRoutes);
 app.use('/api/mamschool', mamschooldataRoutes);
 
