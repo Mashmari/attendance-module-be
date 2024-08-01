@@ -20,7 +20,7 @@ const MamAttendance = sequelize.define('mam_attendance', {
         allowNull: true,
         defaultValue: DataTypes.NOW,
       },
-      Matched_Student_ID: {
+      Matched_User_ID: {
         type: DataTypes.INTEGER,
         allowNull: false,
       },

@@ -8,7 +8,7 @@ exports.createRecord = async (req, res) => {
     const {
       API_User_ID,
       Upload_timestamp,
-      Matched_Student_ID,
+      Matched_User_ID,
       Image_filename,
       Image_storage_path,
       match_outcome,
@@ -27,7 +27,7 @@ exports.createRecord = async (req, res) => {
     const newRecord = await MamAttendance.create({
       API_User_ID,
       Upload_timestamp,
-      Matched_Student_ID,
+      Matched_User_ID,
       Image_filename,
       Image_storage_path,
       match_outcome,
@@ -94,7 +94,7 @@ exports.updateRecord = async (req, res) => {
     const { API_User_ID } = req.params;
     const {
       Upload_timestamp,
-      Matched_Student_ID,
+      Matched_User_ID,
       Image_filename,
       Image_storage_path,
       match_outcome,
@@ -107,7 +107,7 @@ exports.updateRecord = async (req, res) => {
 
     if (record) {
       record.Upload_timestamp = Upload_timestamp;
-      record.Matched_Student_ID = Matched_Student_ID;
+      record.Matched_User_ID = Matched_User_ID;
       record.Image_filename = Image_filename;
       record.Image_storage_path = Image_storage_path;
       record.match_outcome = match_outcome;
