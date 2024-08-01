@@ -1,8 +1,7 @@
-const MamAttendance = require('../models/mamAttendanceModel');
-const MamSchool = require('../models/mamSchoolModel');
-const MamSchoolData = require('../models/mamSchoolModel');
-
-
+const MamAttendance = require("../models/mamAttendanceModel");
+const MamSchool = require("../models/mamSchoolModel");
+const MamSchoolData = require("../models/mamSchoolModel");
+const path = require("path");
 exports.createRecord = async (req, res) => {
   try {
     const {
@@ -21,7 +20,9 @@ exports.createRecord = async (req, res) => {
     const school = await MamSchool.findOne({ where: { API_User_ID } });
 
     if (!school) {
-      return res.status(400).json({ error: "API_User_ID does not exist in mam_schools" });
+      return res
+        .status(400)
+        .json({ error: "API_User_ID does not exist in mam_schools" });
     }
 
     const newRecord = await MamAttendance.create({
@@ -38,12 +39,39 @@ exports.createRecord = async (req, res) => {
 
     res.status(201).json(newRecord);
   } catch (error) {
-    console.log(error)
+    console.log(error);
     res.status(500).json({ error: error.message });
   }
 };
 
 // Get all records with pagination
+// exports.getAllRecords = async (req, res) => {
+//   try {
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const offset = (page - 1) * limit;
+
+//     const { count, rows } = await MamAttendance.findAndCountAll({
+//       offset,
+//       limit,
+//       include: [
+//         {
+//           model: MamSchoolData,
+//           required: true, // INNER JOIN
+//         },
+//       ],
+//     });
+
+//     res.status(200).json({
+//       totalRecords: count,
+//       totalPages: Math.ceil(count / limit),
+//       currentPage: page,
+//       records: rows,
+//     });
+//   } catch (error) {
+//     res.status(500).json({ error: error.message });
+//   }
+// };
 exports.getAllRecords = async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
@@ -61,14 +89,26 @@ exports.getAllRecords = async (req, res) => {
       ],
     });
 
+    // Iterate through rows and add image URLs
+    const updatedRows = rows.map((row) => {
+      console.log(row);
+      const imageUrl = row.Image_storage_path + "/" + row.Image_filename; // Assuming imagePath is the field name in your model
+      // const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${filePath}`;
+      // const imageUrl = filePath;
+      return {
+        ...row.get(), // Get the raw data object from Sequelize instance
+        imageUrl, // Add imageUrl to each row
+      };
+    });
+
     res.status(200).json({
-      totalRecords: count,
       totalPages: Math.ceil(count / limit),
       currentPage: page,
-      records: rows,
+      records: updatedRows,
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
+    console.log(error);
   }
 };
 
@@ -81,7 +121,7 @@ exports.getRecordById = async (req, res) => {
     if (record) {
       res.status(200).json(record);
     } else {
-      res.status(404).json({ message: 'Record not found' });
+      res.status(404).json({ message: "Record not found" });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -118,7 +158,7 @@ exports.updateRecord = async (req, res) => {
       await record.save();
       res.status(200).json(record);
     } else {
-      res.status(404).json({ message: 'Record not found' });
+      res.status(404).json({ message: "Record not found" });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -135,9 +175,15 @@ exports.deleteRecord = async (req, res) => {
       await record.destroy();
       res.status(204).send();
     } else {
-      res.status(404).json({ message: 'Record not found' });
+      res.status(404).json({ message: "Record not found" });
     }
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+};
+
+exports.getImage = async (req, res) => {
+  const { id } = req.params;
+  const image = MamAttendance.findByPk(id);
+  res.sendFile(path.join(__dirname, image.path));
 };

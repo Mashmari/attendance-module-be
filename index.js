@@ -24,6 +24,17 @@ app.use('/api/mamSchoolStudent', mamSchoolStudentRoutes);
 app.use('/mam', mamAttendanceRoutes);
 app.use('/api', matchRoutes);
 app.use('/api/mamschool', mamschooldataRoutes);
+app.get('/image', async (req, res) => {
+  try {
+    const imagePath = req.query.path;
+    console.log(imagePath);
+    res.sendFile(imagePath);
+  } catch (error) {
+    console.log("loading image...");
+    console.log(error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
 
 const swaggerUi = require('swagger-ui-express');
 const swaggerDocument = require('./swagger-output.json');
@@ -50,3 +61,5 @@ sequelize.sync({ alter: false }).then(() => {
 }).catch((err) => {
   console.error('Error syncing database:', err);
 });
+
+
