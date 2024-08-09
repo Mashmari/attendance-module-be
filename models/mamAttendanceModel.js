@@ -1,66 +1,83 @@
-const { DataTypes } = require("sequelize");
-const sequelize = require("../config/database");
-const MamSchool = require("./mamSchoolModel");
+const mysql = require('mysql2/promise');
+const config = require('../config/database'); // Ensure this path is correct
 
-const MamAttendance = sequelize.define(
-  "mam_attendance",
-  {
-    id: {
-      type: DataTypes.INTEGER,
-      primaryKey: true,
-      autoIncrement: true,
-      allowNull: false,
-      unique: true,
-    },
-    API_User_ID: {
-      type: DataTypes.STRING(200),
-      primaryKey: false,
-      allowNull: false,
-    },
-    Upload_timestamp: {
-      type: DataTypes.DATE,
-      allowNull: true,
-      defaultValue: DataTypes.NOW,
-    },
-    Matched_User_ID: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-    },
-    Image_filename: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    Image_storage_path: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    match_outcome: {
-      type: DataTypes.STRING,
-      allowNull: false,
-    },
-    Status_Pending: {
-      //Today changes
-      type: DataTypes.STRING,
-      allowNull: false,
-      // defaultValue: "Yes",
-    },
-    Latitude: {
-      type: DataTypes.FLOAT,
-      allowNull: false,
-    },
-    Longitude: {
-      type: DataTypes.FLOAT,
-      allowNull: false,
-    },
-  },
-  {
-    timestamps: false, // Disables the automatic creation of createdAt and updatedAt fields
-  }
+// Create a MySQL connection pool
+const pool = mysql.createPool(config);
+
+// Create table query
+const createTableQuery = `
+CREATE TABLE IF NOT EXISTS mam_attendance (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    API_User_ID VARCHAR(200) NOT NULL,
+    Upload_timestamp DATETIME DEFAULT NOW(),
+    Matched_User_ID INT,
+    Image_filename VARCHAR(255) NOT NULL,
+    Image_storage_path VARCHAR(255) NOT NULL,
+    match_outcome VARCHAR(255) NOT NULL,
+    Status_Pending VARCHAR(255) NOT NULL,
+    Latitude FLOAT NOT NULL,
+    Longitude FLOAT NOT NULL,
+    FOREIGN KEY (API_User_ID) REFERENCES mam_school(API_User_ID)
+    ON DELETE CASCADE
+    ON UPDATE CASCADE
 );
-MamAttendance.belongsTo(MamSchool, {
-  foreignKey: "API_User_ID",
-  targetKey: "API_User_ID",
-  onDelete: "CASCADE",
-  onUpdate: "CASCADE",
-});
-module.exports = MamAttendance;
+`;
+
+// Initialize the database schema
+const initialize = async () => {
+    const connection = await pool.getConnection();
+    try {
+        await connection.query(createTableQuery);
+    } finally {
+        connection.release();
+    }
+};
+
+// CRUD Operations
+const create = async (data) => {
+    const { API_User_ID, Upload_timestamp, Matched_User_ID, Image_filename, Image_storage_path, match_outcome, Status_Pending, Latitude, Longitude } = data;
+    const query = `
+    INSERT INTO mam_attendance (API_User_ID, Upload_timestamp, Matched_User_ID, Image_filename, Image_storage_path, match_outcome, Status_Pending, Latitude, Longitude)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+    `;
+    const [result] = await pool.query(query, [API_User_ID, Upload_timestamp, Matched_User_ID, Image_filename, Image_storage_path, match_outcome, Status_Pending, Latitude, Longitude]);
+    return result.insertId;
+};
+
+const findAll = async () => {
+    const query = 'SELECT * FROM mam_attendance;';
+    const [rows] = await pool.query(query);
+    return rows;
+};
+
+const findByPk = async (id) => {
+    const query = 'SELECT * FROM mam_attendance WHERE id = ?;';
+    const [rows] = await pool.query(query, [id]);
+    return rows[0];
+};
+
+const updateById = async (id, data) => {
+    const { API_User_ID, Upload_timestamp, Matched_User_ID, Image_filename, Image_storage_path, match_outcome, Status_Pending, Latitude, Longitude } = data;
+    const query = `
+    UPDATE mam_attendance
+    SET API_User_ID = ?, Upload_timestamp = ?, Matched_User_ID = ?, Image_filename = ?, Image_storage_path = ?, match_outcome = ?, Status_Pending = ?, Latitude = ?, Longitude = ?
+    WHERE id = ?;
+    `;
+    const [result] = await pool.query(query, [API_User_ID, Upload_timestamp, Matched_User_ID, Image_filename, Image_storage_path, match_outcome, Status_Pending, Latitude, Longitude, id]);
+    return result.affectedRows > 0;
+};
+
+const deleteById = async (id) => {
+    const query = 'DELETE FROM mam_attendance WHERE id = ?;';
+    const [result] = await pool.query(query, [id]);
+    return result.affectedRows > 0;
+};
+
+module.exports = {
+    initialize,
+    create,
+    findAll,
+    findByPk,
+    updateById,
+    deleteById
+};

@@ -1,189 +1,241 @@
+const pool = require("../config/database");
 const MamAttendance = require("../models/mamAttendanceModel");
-const MamSchool = require("../models/mamSchoolModel");
 const MamSchoolData = require("../models/mamSchoolModel");
 const path = require("path");
+
+// Create a new record
+// exports.createRecord = async (req, res) => {
+//     try {
+//         const {
+//             API_User_ID,
+//             Upload_timestamp,
+//             Matched_User_ID,
+//             Image_filename,
+//             Image_storage_path,
+//             match_outcome,
+//             Latitude,
+//             Longitude,
+//             Status_Pending = "Yes",
+//         } = req.body;
+
+//         // Check if API_User_ID exists in mam_schools
+//         const school = await MamSchool.findByApiUserId(API_User_ID);
+
+//         if (!school) {
+//             return res.status(400).json({ error: "API_User_ID does not exist in mam_schools" });
+//         }
+
+//         const newRecordId = await MamAttendance.create({
+//             API_User_ID,
+//             Upload_timestamp,
+//             Matched_User_ID,
+//             Image_filename,
+//             Image_storage_path,
+//             match_outcome,
+//             Latitude,
+//             Longitude,
+//             Status_Pending,
+//         });
+
+//         res.status(201).json({ id: newRecordId });
+//     } catch (error) {
+//         console.error(error);
+//         res.status(500).json({ error: error.message });
+//     }
+// };
 exports.createRecord = async (req, res) => {
-  try {
-    const {
-      API_User_ID,
-      Upload_timestamp,
-      Matched_User_ID,
-      Image_filename,
-      Image_storage_path,
-      match_outcome,
-      Latitude,
-      Longitude,
-      Status_Pending = "Yes",
-    } = req.body;
+    try {
+        const {
+            API_User_ID,
+            Upload_timestamp,
+            Matched_User_ID,
+            Image_filename,
+            Image_storage_path,
+            match_outcome,
+            Latitude,
+            Longitude,
+            Status_Pending = "Yes",
+        } = req.body;
 
-    // Check if API_User_ID exists in mam_schools
-    const school = await MamSchool.findOne({ where: { API_User_ID } });
+        // Check if API_User_ID exists in mam_schools
+        const [school] = await pool.query('SELECT * FROM mam_schools WHERE API_User_ID = ?', [API_User_ID]);
 
-    if (!school) {
-      return res
-        .status(400)
-        .json({ error: "API_User_ID does not exist in mam_schools" });
+        if (!school.length) {
+            return res.status(400).json({ error: "API_User_ID does not exist in mam_schools" });
+        }
+
+        // Convert ISO 8601 to MySQL DATETIME format (YYYY-MM-DD HH:MM:SS)
+        const formattedTimestamp = Upload_timestamp ? new Date(Upload_timestamp).toISOString().slice(0, 19).replace('T', ' ') : null;
+
+        // Sanitize input values, replacing undefined with null
+        const sanitizedValues = {
+            API_User_ID: API_User_ID || null,
+            Upload_timestamp: formattedTimestamp,
+            Matched_User_ID: Matched_User_ID || null,
+            Image_filename: Image_filename || null,
+            Image_storage_path: Image_storage_path || null,
+            match_outcome: match_outcome || null,
+            Status_Pending: Status_Pending || "Yes",
+            Latitude: Latitude || null,
+            Longitude: Longitude || null,
+        };
+
+        // Prepare the SQL query
+        const query = `
+            INSERT INTO attendance.mam_attendances (
+                API_User_ID, Upload_timestamp, Matched_User_ID, Image_filename,
+                Image_storage_path, match_outcome, Status_Pending, Latitude, Longitude
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+        `;
+
+        // Execute the SQL query
+        await pool.execute(query, [
+            sanitizedValues.API_User_ID,
+            sanitizedValues.Upload_timestamp,
+            sanitizedValues.Matched_User_ID,
+            sanitizedValues.Image_filename,
+            sanitizedValues.Image_storage_path,
+            sanitizedValues.match_outcome,
+            sanitizedValues.Status_Pending,
+            sanitizedValues.Latitude,
+            sanitizedValues.Longitude
+        ]);
+
+        // Return a success message
+        res.status(201).json({ message: 'Record created successfully' });
+    } catch (error) {
+        console.error('Error creating record:', error.message);
+        res.status(500).json({ error: error.message });
     }
-
-    const newRecord = await MamAttendance.create({
-      API_User_ID,
-      Upload_timestamp,
-      Matched_User_ID,
-      Image_filename,
-      Image_storage_path,
-      match_outcome,
-      Latitude,
-      Longitude,
-      Status_Pending,
-    });
-
-    res.status(201).json(newRecord);
-  } catch (error) {
-    console.log(error);
-    res.status(500).json({ error: error.message });
-  }
 };
+
 
 // Get all records with pagination
-// exports.getAllRecords = async (req, res) => {
-//   try {
-//     const page = parseInt(req.query.page) || 1;
-//     const limit = parseInt(req.query.limit) || 10;
-//     const offset = (page - 1) * limit;
 
-//     const { count, rows } = await MamAttendance.findAndCountAll({
-//       offset,
-//       limit,
-//       include: [
-//         {
-//           model: MamSchoolData,
-//           required: true, // INNER JOIN
-//         },
-//       ],
-//     });
-
-//     res.status(200).json({
-//       totalRecords: count,
-//       totalPages: Math.ceil(count / limit),
-//       currentPage: page,
-//       records: rows,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ error: error.message });
-//   }
-// };
 exports.getAllRecords = async (req, res) => {
-  try {
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const offset = (page - 1) * limit;
+    try {
+        const page = parseInt(req.query.page, 10) || 1;
+        const limit = parseInt(req.query.limit, 10) || 10;
+        const offset = (page - 1) * limit;
 
-    const { count, rows } = await MamAttendance.findAndCountAll({
-      offset,
-      limit,
-      include: [
-        {
-          model: MamSchoolData,
-          required: true, // INNER JOIN
-        },
-      ],
-    });
+        // Query to get the paginated records, sorted by Upload_timestamp in descending order
+        const [rows] = await pool.query(
+            `SELECT * 
+             FROM mam_attendances
+             ORDER BY Upload_timestamp DESC
+             LIMIT ?, ?`,
+            [offset, limit]
+        );
 
-    // Iterate through rows and add image URLs
-    const updatedRows = rows.map((row) => {
-      console.log(row);
-      const imageUrl = row.Image_storage_path + "/" + row.Image_filename; // Assuming imagePath is the field name in your model
-      // const imageUrl = `${req.protocol}://${req.get('host')}/uploads/${filePath}`;
-      // const imageUrl = filePath;
-      return {
-        ...row.get(), // Get the raw data object from Sequelize instance
-        imageUrl, // Add imageUrl to each row
-      };
-    });
+        // Query to get the total number of records
+        const [[{ totalRecords }]] = await pool.query(
+            'SELECT COUNT(*) AS totalRecords FROM mam_attendances'
+        );
 
-    res.status(200).json({
-      totalPages: Math.ceil(count / limit),
-      currentPage: page,
-      records: updatedRows,
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-    console.log(error);
-  }
+        // Add image URLs to each record
+        const updatedRows = rows.map(row => {
+            const imageUrl = path.join(row.Image_storage_path, row.Image_filename);
+            return {
+                ...row,
+                imageUrl,
+            };
+        });
+
+        res.status(200).json({
+            totalPages: Math.ceil(totalRecords / limit),
+            currentPage: page,
+            records: updatedRows,
+        });
+    } catch (error) {
+        console.error('Error fetching records with pagination:', error.message);
+        res.status(500).json({ error: error.message });
+    }
 };
+
 
 // Get a record by API_User_ID
 exports.getRecordById = async (req, res) => {
-  try {
-    const { API_User_ID } = req.params;
-    const record = await MamAttendance.findByPk(API_User_ID);
+    try {
+        const { API_User_ID } = req.params;
+        const [record] = await MamAttendance.findById(API_User_ID);
 
-    if (record) {
-      res.status(200).json(record);
-    } else {
-      res.status(404).json({ message: "Record not found" });
+        if (record) {
+            res.status(200).json(record);
+        } else {
+            res.status(404).json({ message: "Record not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 };
 
 // Update a record by API_User_ID
 exports.updateRecord = async (req, res) => {
-  try {
-    const { API_User_ID } = req.params;
-    const {
-      Upload_timestamp,
-      Matched_User_ID,
-      Image_filename,
-      Image_storage_path,
-      match_outcome,
-      Latitude,
-      Longitude,
-      Status_Pending, // Include Status_Pending
-    } = req.body;
+    try {
+        const { API_User_ID } = req.params;
+        const {
+            Upload_timestamp,
+            Matched_User_ID,
+            Image_filename,
+            Image_storage_path,
+            match_outcome,
+            Latitude,
+            Longitude,
+            Status_Pending,
+        } = req.body;
 
-    const record = await MamAttendance.findByPk(API_User_ID);
+        const updated = await MamAttendance.updateById(API_User_ID, {
+            Upload_timestamp,
+            Matched_User_ID,
+            Image_filename,
+            Image_storage_path,
+            match_outcome,
+            Latitude,
+            Longitude,
+            Status_Pending,
+        });
 
-    if (record) {
-      record.Upload_timestamp = Upload_timestamp;
-      record.Matched_User_ID = Matched_User_ID;
-      record.Image_filename = Image_filename;
-      record.Image_storage_path = Image_storage_path;
-      record.match_outcome = match_outcome;
-      record.Latitude = Latitude;
-      record.Longitude = Longitude;
-      record.Status_Pending = Status_Pending; // Update Status_Pending
-
-      await record.save();
-      res.status(200).json(record);
-    } else {
-      res.status(404).json({ message: "Record not found" });
+        if (updated) {
+            const [record] = await MamAttendance.findById(API_User_ID);
+            res.status(200).json(record);
+        } else {
+            res.status(404).json({ message: "Record not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 };
 
 // Delete a record by API_User_ID
 exports.deleteRecord = async (req, res) => {
-  try {
-    const { API_User_ID } = req.params;
-    const record = await MamAttendance.findByPk(API_User_ID);
+    try {
+        const { API_User_ID } = req.params;
+        const deleted = await MamAttendance.deleteById(API_User_ID);
 
-    if (record) {
-      await record.destroy();
-      res.status(204).send();
-    } else {
-      res.status(404).json({ message: "Record not found" });
+        if (deleted) {
+            res.status(204).send();
+        } else {
+            res.status(404).json({ message: "Record not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
 };
 
+// Serve image file
 exports.getImage = async (req, res) => {
-  const { id } = req.params;
-  const image = MamAttendance.findByPk(id);
-  res.sendFile(path.join(__dirname, image.path));
+    try {
+        const { id } = req.params;
+        const [record] = await MamAttendance.findById(id);
+
+        if (record) {
+            const imagePath = path.join(record.Image_storage_path, record.Image_filename);
+            res.sendFile(imagePath);
+        } else {
+            res.status(404).json({ message: "Image not found" });
+        }
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 };
+

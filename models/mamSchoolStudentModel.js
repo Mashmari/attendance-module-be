@@ -1,183 +1,97 @@
-// const { DataTypes } = require('sequelize');
-// const sequelize = require('../config/database');
-// const MamAttendance = require('./mamAttendanceModel');
-
-// const MamSchoolStudent = sequelize.define('mam_school_student', {
-//   id: {
-//     type: DataTypes.INTEGER,
-//     allowNull: false,
-//     autoIncrement: true,
-//     unique: true,
-//     references: {
-//       model: MamAttendance,
-//       key: 'id'
-//     }
-//   },
-//   School_ID: {
-//     type: DataTypes.INTEGER,
-//     allowNull: false,
-//   },
-//   Class_ID: {
-//     type: DataTypes.INTEGER,
-//     allowNull: false,
-//   },
-//   Student_ID: {
-//     type: DataTypes.STRING,
-//     allowNull: false, 
-//     primaryKey: true
-//   },
-//   Ref_Image_filename: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//     defaultValue: '',
-//   },
-//   Ref_Image_filepath: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//     defaultValue: '',
-//   },
-//   Ref_Image_Create_DateTime: {
-//     type: DataTypes.DATE,
-//     allowNull: false,
-//     defaultValue: DataTypes.NOW,
-//   },
-//   Ref_Image_Update_DateTime: {
-//     type: DataTypes.DATE,
-//     allowNull: false,
-//     defaultValue: DataTypes.NOW,
-//   },
-//   Ref_Image_Update_Count: {
-//     type: DataTypes.INTEGER,
-//     allowNull: false,
-//     defaultValue: 0,
-//   },
-//   Location_ID: {
-//     type: DataTypes.STRING(255),
-//     allowNull: false
-// },
-//   StudentName: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   School_Name: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-//   Class_Name: {
-//     type: DataTypes.STRING,
-//     allowNull: false,
-//   },
-// }, {
-//   timestamps: false, // Disables the automatic creation of createdAt and updatedAt fields
-// });
-
-// MamSchoolStudent.addHook('beforeCreate', async (student) => {
-//   try {
-//     const schoolIdPart = student.School_ID.toString().padStart(6, '0').substring(0, 6);
-//     const classIdPart = student.Class_ID.toString().padStart(10, '0');
-//     const autoIncrementId = (await MamSchoolStudent.max('id')) + 1 || 1; // Increment ID based on max current id
-//     const studentIdPart = autoIncrementId.toString().padStart(6, '0');
-
-//     student.Student_ID = `${schoolIdPart}${classIdPart}${studentIdPart}`;
-//     console.log(`Generated Student_ID: ${student.Student_ID}`);
-//   } catch (error) {
-//     console.error('Error generating Student_ID:', error);
-//     throw error; // Re-throw the error to handle it in the create method
-//   }
-// });
-// MamSchoolStudent.belongsTo(MamAttendance, {
-//   foreignKey: 'id',
-//   targetKey: 'id',
-//   onDelete: 'CASCADE',
-//   onUpdate: 'CASCADE',
-// });
-// module.exports = MamSchoolStudent;
-
-const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database');
+const connection = require('../config/database');
 const MamAttendance = require('./mamAttendanceModel');
 
-const MamSchoolStudent = sequelize.define('mam_school_student', {
-  id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    autoIncrement: true,
-    unique: true,
-    references: {
-      model: MamAttendance,
-      key: 'id'
-    }
-  },
-  School_ID: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
-  Class_ID: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-  },
-  Student_ID: {
-    type: DataTypes.STRING,
-    allowNull: false, 
-    primaryKey: true
-  },
-  Ref_Image_filename: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: '',
-  },
-  Ref_Image_filepath: {
-    type: DataTypes.STRING,
-    allowNull: false,
-    defaultValue: '',
-  },
-  Ref_Image_Create_DateTime: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
-  Ref_Image_Update_DateTime: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
-  Ref_Image_Update_Count: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
-    defaultValue: 0,
-  },
-  Location_ID: {
-    type: DataTypes.STRING(255),
-    allowNull: false,
-  },
-  StudentName: {
-    type: DataTypes.STRING,
-    allowNull: false,
-  },
-}, {
-  timestamps: false, // Disables the automatic creation of createdAt and updatedAt fields
-});
+// Create a new student
+const createStudent = async (student) => {
+  return new Promise((resolve, reject) => {
+    // Generate Student_ID before insertion
+    generateStudentId(student, (err, studentId) => {
+      if (err) return reject(err);
 
-MamSchoolStudent.addHook('beforeCreate', async (student) => {
-  try {
-    const schoolIdPart = student.School_ID.toString().padStart(6, '0').substring(0, 6);
-    const classIdPart = student.Class_ID.toString().padStart(10, '0');
-    const autoIncrementId = (await MamSchoolStudent.max('id')) + 1 || 1; // Increment ID based on max current id
+      student.Student_ID = studentId;
+
+      const sql = `
+        INSERT INTO mam_school_student (School_ID, Class_ID, Student_ID, Ref_Image_filename, Ref_Image_filepath, Ref_Image_Create_DateTime, Ref_Image_Update_DateTime, Ref_Image_Update_Count, Location_ID, StudentName)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      connection.query(sql, [
+        student.School_ID,
+        student.Class_ID,
+        student.Student_ID,
+        student.Ref_Image_filename,
+        student.Ref_Image_filepath,
+        student.Ref_Image_Create_DateTime,
+        student.Ref_Image_Update_DateTime,
+        student.Ref_Image_Update_Count,
+        student.Location_ID,
+        student.StudentName
+      ], (err, results) => {
+        if (err) return reject(err);
+        resolve(results);
+      });
+    });
+  });
+};
+
+// Generate Student_ID
+const generateStudentId = (student, callback) => {
+  const schoolIdPart = student.School_ID.toString().padStart(6, '0').substring(0, 6);
+  const classIdPart = student.Class_ID.toString().padStart(10, '0');
+
+  const sql = `SELECT MAX(id) AS maxId FROM mam_school_student`;
+  connection.query(sql, (err, results) => {
+    if (err) return callback(err);
+
+    const autoIncrementId = (results[0].maxId || 0) + 1;
     const studentIdPart = autoIncrementId.toString().padStart(6, '0');
+    const studentId = `${schoolIdPart}${classIdPart}${studentIdPart}`;
+    callback(null, studentId);
+  });
+};
 
-    student.Student_ID = `${schoolIdPart}${classIdPart}${studentIdPart}`;
-    console.log(`Generated Student_ID: ${student.Student_ID}`);
-  } catch (error) {
-    console.error('Error generating Student_ID:', error);
-    throw error; // Re-throw the error to handle it in the create method
-  }
-});
+// Get a student by Student_ID
+const getStudentById = (studentId) => {
+  return new Promise((resolve, reject) => {
+    const sql = 'SELECT * FROM mam_school_student WHERE Student_ID = ?';
+    connection.query(sql, [studentId], (err, results) => {
+      if (err) return reject(err);
+      resolve(results[0]); // Assuming Student_ID is unique
+    });
+  });
+};
 
-MamSchoolStudent.belongsTo(MamAttendance, {
-  foreignKey: 'id',
-  targetKey: 'id',
-  onDelete: 'CASCADE',
-  onUpdate: 'CASCADE',
-});
+// Update a student by Student_ID
+const updateStudent = async (studentId, updatedFields) => {
+  return new Promise((resolve, reject) => {
+    const sql = `
+      UPDATE mam_school_student
+      SET ?
+      WHERE Student_ID = ?
+    `;
+    connection.query(sql, [updatedFields, studentId], (err, results) => {
+      if (err) return reject(err);
+      resolve(results);
+    });
+  });
+};
 
-module.exports = MamSchoolStudent;
+// Delete a student by Student_ID
+const deleteStudent = async (studentId) => {
+  return new Promise((resolve, reject) => {
+    const sql = 'DELETE FROM mam_school_student WHERE Student_ID = ?';
+    connection.query(sql, [studentId], (err, results) => {
+      if (err) return reject(err);
+      resolve(results);
+    });
+  });
+};
+
+module.exports = {
+  createStudent,
+  getStudentById,
+  updateStudent,
+  deleteStudent,
+  generateStudentId,
+};
+
