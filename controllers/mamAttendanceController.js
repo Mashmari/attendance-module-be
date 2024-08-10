@@ -111,25 +111,27 @@ exports.createRecord = async (req, res) => {
 
 
 // Get all records with pagination
-
 exports.getAllRecords = async (req, res) => {
     try {
         const page = parseInt(req.query.page, 10) || 1;
-        const limit = parseInt(req.query.limit, 10) || 10;
+        const limit = 10; // Fixed limit for pagination
         const offset = (page - 1) * limit;
 
-        // Query to get the paginated records, sorted by Upload_timestamp in descending order
+        // Query to get the paginated records, including School_Name, sorted by Upload_timestamp in descending order
         const [rows] = await pool.query(
-            `SELECT * 
-             FROM mam_attendances
-             ORDER BY Upload_timestamp DESC
+            `SELECT a.*, s.School_Name, s.Class_Name
+             FROM mam_attendances a
+             LEFT JOIN mam_schools s ON a.API_User_ID = s.API_User_ID
+             ORDER BY a.Upload_timestamp DESC
              LIMIT ?, ?`,
             [offset, limit]
         );
 
         // Query to get the total number of records
         const [[{ totalRecords }]] = await pool.query(
-            'SELECT COUNT(*) AS totalRecords FROM mam_attendances'
+            `SELECT COUNT(*) AS totalRecords
+             FROM mam_attendances a
+             LEFT JOIN mam_schools s ON a.API_User_ID = s.API_User_ID`
         );
 
         // Add image URLs to each record
@@ -151,6 +153,9 @@ exports.getAllRecords = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
+
 
 
 // Get a record by API_User_ID

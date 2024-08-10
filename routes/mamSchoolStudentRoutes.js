@@ -21,8 +21,13 @@ const storage = multer.diskStorage({
   
   const upload = multer({ storage: storage });
 
+
 router.post('/createStudentWithImage', upload.single('image'), mamSchoolStudentController.createStudentWithImage);
 
-router.get('/getClassesBySchoolName', mamSchoolStudentController.getClassesBySchoolName);
 
+// Updated route to use query parameter for School_Name
+router.post('/getClassesBySchoolName', mamSchoolStudentController.getClassesBySchoolName);
+
+// Route for getting all school names
+router.get('/getAllSchoolNames', mamSchoolStudentController.getAllSchoolNames);
 module.exports = router;

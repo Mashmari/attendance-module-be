@@ -45,13 +45,19 @@ exports.createRecord = async (req, res) => {
 // Get all entries
 exports.getAllRecords = async (req, res) => {
     try {
-        const { page = 1, limit = 10 } = req.query;
-        const entries = await MamSchoolData.findAll({ page: parseInt(page, 10), limit: parseInt(limit, 10) });
-        res.status(200).json(entries);
+        const query = `
+            SELECT * FROM mam_schools LIMIT 10
+        `;
+
+        const [rows] = await pool.execute(query);
+
+        res.status(200).json(rows);
     } catch (error) {
         res.status(500).json({ message: error.message });
+        console.error(error);
     }
 };
+
 
 // Get a single entry by ID (API_User_ID)
 exports.getRecordById = async (req, res) => {
