@@ -8,17 +8,33 @@ const multer = require('multer');
 require('dotenv').config();
 
 // Configure multer storage
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, process.env.PHOTO_PASTING_PATH); // Set the destination path
+//   },
+//   filename: function (req, file, cb) {
+//     const { StudentName, Student_ID } = req.body;
+//     cb(null, `${StudentName}_${Student_ID}.jpg`); // Set the filename
+//   }
+// });
+
+
+// const upload = multer({ storage: storage });
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, process.env.PHOTO_PASTING_PATH); // Set the destination path
+    const tempFolderPath = path.join('C:', 'Users', 'CDOT', 'CIAS_DATA', 'TEMP');
+    cb(null, tempFolderPath); // Save initially to TEMP folder
   },
   filename: function (req, file, cb) {
-    const { StudentName, Student_ID } = req.body;
-    cb(null, `${StudentName}_${Student_ID}.JPG`); // Set the filename
+    cb(null, file.originalname); // Save with original filename
   }
 });
 
 const upload = multer({ storage: storage });
+
+
+
+
 
 // Function to generate an auto-increment number for Student_ID starting from 100
 const getAutoNumber = async () => {
@@ -33,6 +49,99 @@ const getAutoNumber = async () => {
 };
 
 // Controller to create a new student record with an image
+// exports.createStudentWithImage = async (req, res) => {
+//   try {
+//     console.log('req.body:', req.body);
+//     console.log('req.file:', req.file);
+
+//     const { School_Name, Class_Name, StudentName } = req.body;
+//     const image = req.file; // Image file from multer
+
+//     // Validate input
+//     if (!School_Name || !Class_Name || !StudentName || !image) {
+//       return res.status(400).json({ error: "School_Name, Class_Name, StudentName, and image are required" });
+//     }
+
+//     // Fetch School_ID and Class_ID from mam_schools using School_Name and Class_Name
+//     const [schoolDataResults] = await db.query(
+//       `SELECT School_ID, Class_ID, Location_ID 
+//        FROM mam_schools 
+//        WHERE School_Name = ? AND Class_Name = ?`,
+//       [School_Name, Class_Name]
+//     );
+
+//     // Check if the school data exists
+//     if (schoolDataResults.length === 0) {
+//       return res.status(400).json({ error: "School_Name or Class_Name does not exist in mam_schools" });
+//     }
+
+//     const schoolData = schoolDataResults[0];
+//     const { School_ID, Class_ID, Location_ID } = schoolData;
+
+//     // Generate the unique Student_ID
+//     const studentId = await getAutoNumber();
+
+//     // Generate the image filename and filepath
+//     const imageFilename = `${StudentName}_${studentId}.JPG`;
+//     const imageFilepath = path.join(process.env.PHOTO_PASTING_PATH, imageFilename);
+
+//     // SQL query to insert the new student record
+//     const insertStudentQuery = `
+//       INSERT INTO mam_school_students (
+//         School_ID, Class_ID, Student_ID, 
+//         Ref_Image_filename, Ref_Image_filepath, 
+//         Ref_Image_Create_DateTime, Ref_Image_Update_DateTime, 
+//         Ref_Image_Update_Count, Location_ID, StudentName
+//       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//     `;
+
+//     const insertStudentValues = [
+//       School_ID,
+//       Class_ID,
+//       studentId,
+//       imageFilename,
+//       imageFilepath,
+//       new Date(),
+//       new Date(),
+//       0, // Ref_Image_Update_Count
+//       Location_ID,
+//       StudentName
+//     ];
+
+//     // Insert the new student record into the database
+//     await db.query(insertStudentQuery, insertStudentValues);
+
+//     // Define source and destination paths for image copy
+//     const sourcePath = image.path; // Path from multer
+//     const destPath = imageFilepath;
+
+//     // Validate paths
+//     if (!sourcePath || !destPath) {
+//       return res.status(500).json({ error: "Source or destination path is invalid" });
+//     }
+
+//     // Move the image file from source to destination
+//     await fs.promises.rename(sourcePath, destPath);
+//     console.log(`Image file moved to: ${destPath}`);
+
+//     // Send success response
+//     res.status(201).json({
+//       School_ID,
+//       Class_ID,
+//       Student_ID: studentId,
+//       Ref_Image_filename: imageFilename,
+//       Ref_Image_filepath: imageFilepath,
+//       Ref_Image_Create_DateTime: new Date(),
+//       Ref_Image_Update_DateTime: new Date(),
+//       Ref_Image_Update_Count: 0,
+//       Location_ID,
+//       StudentName,
+//     });
+//   } catch (error) {
+//     console.log(error);
+//     res.status(500).json({ error: error.message });
+//   }
+// }; 
 exports.createStudentWithImage = async (req, res) => {
   try {
     console.log('req.body:', req.body);
@@ -54,7 +163,6 @@ exports.createStudentWithImage = async (req, res) => {
       [School_Name, Class_Name]
     );
 
-    // Check if the school data exists
     if (schoolDataResults.length === 0) {
       return res.status(400).json({ error: "School_Name or Class_Name does not exist in mam_schools" });
     }
@@ -66,8 +174,21 @@ exports.createStudentWithImage = async (req, res) => {
     const studentId = await getAutoNumber();
 
     // Generate the image filename and filepath
-    const imageFilename = `${StudentName}_${studentId}.JPG`;
-    const imageFilepath = path.join(process.env.PHOTO_PASTING_PATH, imageFilename);
+    const imageFilename = `${StudentName}_${studentId}.jpg`;
+    const tempFolderPath = path.join('C:', 'Users', 'CDOT', 'CIAS_DATA', 'TEMP');
+    const finalDestinationPath = path.join(process.env.PHOTO_PASTING_PATH, imageFilename);
+
+    // Ensure the TEMP folder exists, if not create it
+    await fs.promises.mkdir(tempFolderPath, { recursive: true });
+
+    // Move the image file from the current location to TEMP folder
+    const tempFilePath = path.join(tempFolderPath, imageFilename);
+    await fs.promises.rename(image.path, tempFilePath);
+    console.log(`Image file moved to TEMP folder: ${tempFilePath}`);
+
+    // Move the image file from TEMP folder to final destination
+    await fs.promises.rename(tempFilePath, finalDestinationPath);
+    console.log(`Image file moved to final destination: ${finalDestinationPath}`);
 
     // SQL query to insert the new student record
     const insertStudentQuery = `
@@ -84,7 +205,7 @@ exports.createStudentWithImage = async (req, res) => {
       Class_ID,
       studentId,
       imageFilename,
-      imageFilepath,
+      finalDestinationPath,
       new Date(),
       new Date(),
       0, // Ref_Image_Update_Count
@@ -95,26 +216,15 @@ exports.createStudentWithImage = async (req, res) => {
     // Insert the new student record into the database
     await db.query(insertStudentQuery, insertStudentValues);
 
-    // Define source and destination paths for image copy
-    const sourcePath = image.path; // Path from multer
-    const destPath = imageFilepath;
-
-    // Validate paths
-    if (!sourcePath || !destPath) {
-      return res.status(500).json({ error: "Source or destination path is invalid" });
-    }
-
-    // Move the image file from source to destination
-    await fs.promises.rename(sourcePath, destPath);
-    console.log(`Image file moved to: ${destPath}`);
-
     // Send success response
     res.status(201).json({
+      message: "Image successfully moved to TEMP folder and final destination.",
+      tempFolderPath: tempFilePath,
       School_ID,
       Class_ID,
       Student_ID: studentId,
       Ref_Image_filename: imageFilename,
-      Ref_Image_filepath: imageFilepath,
+      Ref_Image_filepath: finalDestinationPath,
       Ref_Image_Create_DateTime: new Date(),
       Ref_Image_Update_DateTime: new Date(),
       Ref_Image_Update_Count: 0,
@@ -131,28 +241,33 @@ exports.createStudentWithImage = async (req, res) => {
 exports.createImage = async (req, res) => {
   const connection = await db.getConnection(); // Get a connection from the pool
   try {
-    const { StudentName } = req.body;
+    const { StudentName, id } = req.body; // Make sure to extract 'id' from req.body
 
     // Validate input
     if (!StudentName) {
       return res.status(400).json({ error: "StudentName is required" });
     }
 
+    if (!id) {
+      return res.status(400).json({ error: "ID is required" });
+    }
+
     await connection.beginTransaction(); // Start a transaction
 
     // Fetch the attendance record using the provided id
     const [attendanceRecords] = await connection.query(
-      "SELECT * FROM mam_attendances WHERE Status_Pending = 'Yes' LIMIT 1 FOR UPDATE"
+      "SELECT * FROM mam_attendances WHERE id = ? AND Status_Pending = 'Yes' LIMIT 1 FOR UPDATE",
+      [id]
     );
 
     // Check if the attendance record exists
     if (attendanceRecords.length === 0) {
       await connection.rollback();
-      return res.status(400).json({ error: "No pending attendance records found" });
+      return res.status(400).json({ error: "No pending attendance records found for the provided ID" });
     }
 
     const attendanceRecord = attendanceRecords[0];
-    const { id, API_User_ID, Image_storage_path, Image_filename } = attendanceRecord;
+    const { API_User_ID, Image_storage_path, Image_filename } = attendanceRecord;
 
     // Fetch School_ID, Class_ID, Location_ID from mam_schools using API_User_ID
     const [schoolDataResults] = await connection.query(
@@ -186,8 +301,8 @@ exports.createImage = async (req, res) => {
       School_ID,
       Class_ID,
       studentId,
-      `${StudentName}_${studentId}.JPG`,
-      path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.JPG`),
+      `${StudentName}_${studentId}.jpg`,
+      path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`),
       new Date(),
       new Date(),
       0, // Ref_Image_Update_Count
@@ -200,7 +315,7 @@ exports.createImage = async (req, res) => {
 
     // Define source and destination paths for image copy
     const sourcePath = path.join(Image_storage_path, Image_filename);
-    const destPath = path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.JPG`);
+    const destPath = path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`);
 
     // Validate paths
     if (!sourcePath || !destPath) {
@@ -225,7 +340,7 @@ exports.createImage = async (req, res) => {
       School_ID,
       Class_ID,
       Student_ID: studentId,
-      Ref_Image_filename: `${StudentName}_${studentId}.JPG`,
+      Ref_Image_filename: `${StudentName}_${studentId}.jpg`,
       Ref_Image_filepath: destPath,
       Ref_Image_Create_DateTime: new Date(),
       Ref_Image_Update_DateTime: new Date(),
@@ -241,6 +356,125 @@ exports.createImage = async (req, res) => {
     connection.release(); // Release the connection back to the pool
   }
 };
+
+
+
+// exports.createImage = async (req, res) => {
+//   const connection = await db.getConnection(); // Get a connection from the pool
+//   try {
+//     const { StudentName } = req.body;
+
+//     // Validate input
+//     if (!StudentName) {
+//       return res.status(400).json({ error: "StudentName is required" });
+//     }
+
+//     await connection.beginTransaction(); // Start a transaction
+
+//     // Fetch the attendance record using the provided id
+//     const [attendanceRecords] = await connection.query(
+//       "SELECT * FROM mam_attendances WHERE Status_Pending = 'Yes' LIMIT 1 FOR UPDATE"
+//     );
+   
+
+//     // Check if the attendance record exists
+//     if (attendanceRecords.length === 0) {
+//       await connection.rollback();
+//       return res.status(400).json({ error: "No pending attendance records found" });
+//     }
+
+//     const attendanceRecord = attendanceRecords[0];
+//     const { id, API_User_ID, Image_storage_path, Image_filename } = attendanceRecord;
+
+//     // Fetch School_ID, Class_ID, Location_ID from mam_schools using API_User_ID
+//     const [schoolDataResults] = await connection.query(
+//       "SELECT School_ID, Class_ID, Location_ID FROM mam_schools WHERE API_User_ID = ? FOR UPDATE",
+//       [API_User_ID]
+//     );
+
+//     // Check if the school data exists
+//     if (schoolDataResults.length === 0) {
+//       await connection.rollback();
+//       return res.status(400).json({ error: "API_User_ID does not exist in mam_schools" });
+//     }
+
+//     const schoolData = schoolDataResults[0];
+//     const { School_ID, Class_ID, Location_ID } = schoolData;
+
+//     // Generate the unique Student_ID
+//     const studentId = await getAutoNumber();
+
+//     // SQL query to insert the new student record
+//     const insertStudentQuery = `
+//       INSERT INTO mam_school_students (
+//         School_ID, Class_ID, Student_ID, 
+//         Ref_Image_filename, Ref_Image_filepath, 
+//         Ref_Image_Create_DateTime, Ref_Image_Update_DateTime, 
+//         Ref_Image_Update_Count, Location_ID, StudentName
+//       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//     `;
+
+//     const insertStudentValues = [
+//       School_ID,
+//       Class_ID,
+//       studentId,
+//       `${StudentName}_${studentId}.jpg`,
+//       path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`),
+//       new Date(),
+//       new Date(),
+//       0, // Ref_Image_Update_Count
+//       Location_ID,
+//       StudentName
+//     ];
+
+//     // Insert the new student record into the database
+//     await connection.query(insertStudentQuery, insertStudentValues);
+
+//     // Define source and destination paths for image copy
+//     const sourcePath = path.join(Image_storage_path, Image_filename);
+//     const destPath = path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`);
+
+//     // Validate paths
+//     if (!sourcePath || !destPath) {
+//       await connection.rollback();
+//       return res.status(500).json({ error: "Source or destination path is invalid" });
+//     }
+
+//     // Copy the image file from source to destination
+//     await fs.promises.copyFile(sourcePath, destPath);
+//     console.log(`Image file copied to: ${destPath}`);
+
+//     // Update Status_Pending to 'No' in MamAttendance table
+//     await connection.query(
+//       "UPDATE mam_attendances SET Status_Pending = 'No' WHERE id = ?",
+//       [id]
+//     );
+
+//     await connection.commit(); // Commit the transaction
+
+//     // Send success response
+//     res.status(201).json({
+//       School_ID,
+//       Class_ID,
+//       Student_ID: studentId,
+//       Ref_Image_filename: `${StudentName}_${studentId}.jpg`,
+//       Ref_Image_filepath: destPath,
+//       Ref_Image_Create_DateTime: new Date(),
+//       Ref_Image_Update_DateTime: new Date(),
+//       Ref_Image_Update_Count: 0,
+//       Location_ID,
+//       StudentName,
+//     });
+//   } catch (error) {
+//     await connection.rollback(); // Rollback the transaction on error
+//     console.log(error);
+//     res.status(500).json({ error: error.message });
+//   } finally {
+//     connection.release(); // Release the connection back to the pool
+//   }
+// };
+
+
 // Get all image records with pagination
 exports.getAllStudentsWithPagination = async (req, res) => {
   try {

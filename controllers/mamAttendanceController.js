@@ -73,7 +73,8 @@ exports.createRecord = async (req, res) => {
             Upload_timestamp: formattedTimestamp,
             Matched_User_ID: Matched_User_ID || null,
             Image_filename: Image_filename || null,
-            Image_storage_path: Image_storage_path || null,
+            Image_storage_path: path.join(process.env.FILE_ROOT_PATH, Image_storage_path) || null,
+            // Image_storage_path: Image_storage_path|| null,
             match_outcome: match_outcome || null,
             Status_Pending: Status_Pending || "Yes",
             Latitude: Latitude || null,
@@ -153,6 +154,8 @@ exports.getAllRecords = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
+
 
 
 
