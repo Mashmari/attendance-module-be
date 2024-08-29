@@ -2,6 +2,7 @@ const pool = require("../config/database");
 const MamAttendance = require("../models/mamAttendanceModel");
 const MamSchoolData = require("../models/mamSchoolModel");
 const path = require("path");
+const db = require('../config/database');
 
 // Create a new record
 // exports.createRecord = async (req, res) => {
@@ -162,13 +163,29 @@ exports.getAllRecords = async (req, res) => {
 
 
 // Get a record by API_User_ID
+// exports.getRecordById = async (req, res) => {
+//     try {
+//         const { API_User_ID } = req.params;
+//         const [record] = await MamAttendance.findById(API_User_ID);
+
+//         if (record) {
+//             res.status(200).json(record);
+//         } else {
+//             res.status(404).json({ message: "Record not found" });
+//         }
+//     } catch (error) {
+//         res.status(500).json({ error: error.message });
+//     }
+// };
+//Get record by id
 exports.getRecordById = async (req, res) => {
     try {
-        const { API_User_ID } = req.params;
-        const [record] = await MamAttendance.findById(API_User_ID);
+        const { id } = req.params;
+        const query = 'SELECT * FROM mam_attendances WHERE id = ?';
+        const [rows] = await db.execute(query, [id]);
 
-        if (record) {
-            res.status(200).json(record);
+        if (rows.length > 0) {
+            res.status(200).json(rows[0]);
         } else {
             res.status(404).json({ message: "Record not found" });
         }
@@ -177,10 +194,11 @@ exports.getRecordById = async (req, res) => {
     }
 };
 
-// Update a record by API_User_ID
+
+// Update a record by id (primary key)
 exports.updateRecord = async (req, res) => {
     try {
-        const { API_User_ID } = req.params;
+        const { id } = req.params; // Use id as the primary key
         const {
             Upload_timestamp,
             Matched_User_ID,
@@ -192,7 +210,7 @@ exports.updateRecord = async (req, res) => {
             Status_Pending,
         } = req.body;
 
-        const updated = await MamAttendance.updateById(API_User_ID, {
+        const updated = await MamAttendance.updateById(id, {
             Upload_timestamp,
             Matched_User_ID,
             Image_filename,
@@ -204,7 +222,7 @@ exports.updateRecord = async (req, res) => {
         });
 
         if (updated) {
-            const [record] = await MamAttendance.findById(API_User_ID);
+            const record = await MamAttendance.findByPk(id); // Find the record by id
             res.status(200).json(record);
         } else {
             res.status(404).json({ message: "Record not found" });
@@ -214,14 +232,16 @@ exports.updateRecord = async (req, res) => {
     }
 };
 
-// Delete a record by API_User_ID
+
+
+// Delete a record by id (primary key)
 exports.deleteRecord = async (req, res) => {
     try {
-        const { API_User_ID } = req.params;
-        const deleted = await MamAttendance.deleteById(API_User_ID);
+        const { id } = req.params; // Use id as the primary key
+        const deleted = await MamAttendance.deleteById(id);
 
         if (deleted) {
-            res.status(204).send();
+            res.status(204).send(); // Successfully deleted, no content to return
         } else {
             res.status(404).json({ message: "Record not found" });
         }
@@ -229,6 +249,7 @@ exports.deleteRecord = async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 };
+
 
 // Serve image file
 exports.getImage = async (req, res) => {

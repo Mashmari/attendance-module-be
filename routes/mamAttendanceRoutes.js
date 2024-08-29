@@ -5,9 +5,9 @@ const router = express.Router();
 
 router.post('/create', mamAttendanceController.createRecord);
 router.get('/get', mamAttendanceController.getAllRecords);
-router.get('/getbyid/:API_User_ID', mamAttendanceController.getRecordById);
-router.put('/updatebyid/:API_User_ID', mamAttendanceController.updateRecord);
-router.delete('/deletebyid/:API_User_ID', mamAttendanceController.deleteRecord);
+router.get('/getbyid/:id', mamAttendanceController.getRecordById);
+router.put('/updatebyid/:id', mamAttendanceController.updateRecord);
+router.delete('/deletebyid/:id', mamAttendanceController.deleteRecord);
 
 
 module.exports = router;
