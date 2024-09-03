@@ -244,7 +244,7 @@ exports.createStudentWithImage = async (req, res) => {
 
 
 
-// Get all image records with pagination
+// Create record
 
 exports.createImage = async (req, res) => {
   const connection = await db.getConnection(); // Get a connection from the pool
@@ -322,7 +322,7 @@ exports.createImage = async (req, res) => {
     await connection.query(insertStudentQuery, insertStudentValues);
 
     // Define source and destination paths for image copy
-    const sourcePath = path.join(Image_storage_path, Image_filename);
+    const sourcePath = path.join(Image_storage_path);
     const destPath = path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`);
 
     // Log paths
@@ -464,8 +464,8 @@ exports.updateImage = async (req, res) => {
         School_ID,
         Class_ID,
         Student_ID,
-        Ref_Image_filename: `${StudentName}_${Student_ID}.JPG`,
-        Ref_Image_filepath: `process.env.PHOTO_PASTING_PATH/${StudentName}_${Student_ID}.JPG`,
+        Ref_Image_filename: `${StudentName}_${Student_ID}.jpg`,
+        Ref_Image_filepath: `process.env.PHOTO_PASTING_PATH/${StudentName}_${Student_ID}.jpg`,
         Ref_Image_Create_DateTime,
         Ref_Image_Update_DateTime,
         Ref_Image_Update_Count: image.Ref_Image_Update_Count + 1,
