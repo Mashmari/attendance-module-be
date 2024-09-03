@@ -21,6 +21,7 @@ Prerequisites-
 Steps-
 1.Navigate to the project directory:
    cd-reponame
+
 2.Alter `.env` file in the root of your project and change the following variables:
 - PORT = Your backend port
 - DB_HOST = Your database host
@@ -29,8 +30,10 @@ Steps-
 - DB_NAME = Your database name
 - PHOTO_PASTING_PATH = Your photo pasting path(e.g., C:/Users/CDOT/CIAS_DATA/ENROLL_IMG)
 - FILE_ROOT_PATH = Your file root path (e.g., C:/Users)
+
 3.Install dependencies:
    npm install
+
 4.Start the server:
    node index.js
 
