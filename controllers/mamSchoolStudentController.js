@@ -121,6 +121,131 @@ exports.createStudentWithImage = async (req, res) => {
 };
 
 
+// exports.createImage = async (req, res) => {
+//   const connection = await db.getConnection(); // Get a connection from the pool
+//   try {
+//     const { StudentName, id } = req.body; // Make sure to extract 'id' from req.body
+
+//     // Validate input
+//     if (!StudentName) {
+//       return res.status(400).json({ error: "StudentName is required" });
+//     }
+
+//     if (!id) {
+//       return res.status(400).json({ error: "ID is required" });
+//     }
+
+//     await connection.beginTransaction(); // Start a transaction
+
+//     // Fetch the attendance record using the provided id
+//     const [attendanceRecords] = await connection.query(
+//       "SELECT * FROM mam_attendances WHERE id = ? AND Status_Pending = 'Yes' LIMIT 1 FOR UPDATE",
+//       [id]
+//     );
+
+//     // Check if the attendance record exists
+//     if (attendanceRecords.length === 0) {
+//       await connection.rollback();
+//       return res.status(400).json({ error: "No pending attendance records found for the provided ID" });
+//     }
+
+//     const attendanceRecord = attendanceRecords[0];
+//     const { API_User_ID, Image_storage_path, Image_filename } = attendanceRecord;
+
+//     // Fetch School_ID, Class_ID, Location_ID from mam_schools using API_User_ID
+//     const [schoolDataResults] = await connection.query(
+//       "SELECT School_ID, Class_ID, Location_ID FROM mam_schools WHERE API_User_ID = ? FOR UPDATE",
+//       [API_User_ID]
+//     );
+
+//     // Check if the school data exists
+//     if (schoolDataResults.length === 0) {
+//       await connection.rollback();
+//       return res.status(400).json({ error: "API_User_ID does not exist in mam_schools" });
+//     }
+
+//     const schoolData = schoolDataResults[0];
+//     const { School_ID, Class_ID, Location_ID } = schoolData;
+
+//     // Generate the unique Student_ID
+//     const studentId = await getAutoNumber();
+
+//     // SQL query to insert the new student record
+//     const insertStudentQuery = `
+//       INSERT INTO mam_school_students (
+//         School_ID, Class_ID, Student_ID, 
+//         Ref_Image_filename, Ref_Image_filepath, 
+//         Ref_Image_Create_DateTime, Ref_Image_Update_DateTime, 
+//         Ref_Image_Update_Count, Location_ID, StudentName
+//       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//     `;
+
+//     const insertStudentValues = [
+//       School_ID,
+//       Class_ID,
+//       studentId,
+//       `${StudentName}_${studentId}.jpg`,
+//       path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`),
+//       new Date(),
+//       new Date(),
+//       0, // Ref_Image_Update_Count
+//       Location_ID,
+//       StudentName
+//     ];
+
+//     // Insert the new student record into the database
+//     await connection.query(insertStudentQuery, insertStudentValues);
+
+//     // Define source and destination paths for image copy
+//     // const sourcePath = path.join(Image_storage_path, Image_filename);
+//     const sourcePath = Image_storage_path;  
+//     const destPath = path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`);
+
+//     // Validate paths
+//     if (!sourcePath || !destPath) {
+//       await connection.rollback();
+//       return res.status(500).json({ error: "Source or destination path is invalid" });
+//     }
+
+//     // Copy the image file from source to destination
+//     await fs.promises.copyFile(sourcePath, destPath);
+//     console.log(`Image file copied to: ${destPath}`);
+
+//     // Update Status_Pending to 'No' in MamAttendance table
+//     await connection.query(
+//       "UPDATE mam_attendances SET Status_Pending = 'No' WHERE id = ?",
+//       [id]
+//     );
+
+//     await connection.commit(); // Commit the transaction
+
+//     // Send success response
+//     res.status(201).json({
+//       School_ID,
+//       Class_ID,
+//       Student_ID: studentId,
+//       Ref_Image_filename: `${StudentName}_${studentId}.jpg`,
+//       Ref_Image_filepath: destPath,
+//       Ref_Image_Create_DateTime: new Date(),
+//       Ref_Image_Update_DateTime: new Date(),
+//       Ref_Image_Update_Count: 0,
+//       Location_ID,
+//       StudentName,
+//     });
+//   } catch (error) {
+//     await connection.rollback(); // Rollback the transaction on error
+//     console.log(error);
+//     res.status(500).json({ error: error.message });
+//   } finally {
+//     connection.release(); // Release the connection back to the pool
+//   }
+// };
+
+
+
+
+// Get all image records with pagination
+
 exports.createImage = async (req, res) => {
   const connection = await db.getConnection(); // Get a connection from the pool
   try {
@@ -197,14 +322,25 @@ exports.createImage = async (req, res) => {
     await connection.query(insertStudentQuery, insertStudentValues);
 
     // Define source and destination paths for image copy
-    // const sourcePath = path.join(Image_storage_path, Image_filename);
-    const sourcePath = Image_storage_path;  
+    const sourcePath = path.join(Image_storage_path, Image_filename);
     const destPath = path.join(process.env.PHOTO_PASTING_PATH, `${StudentName}_${studentId}.jpg`);
+
+    // Log paths
+    console.log(`Source Path: ${sourcePath}`);
+    console.log(`Destination Path: ${destPath}`);
 
     // Validate paths
     if (!sourcePath || !destPath) {
       await connection.rollback();
       return res.status(500).json({ error: "Source or destination path is invalid" });
+    }
+
+    // Check if the source file exists
+    try {
+      await fs.promises.access(sourcePath, fs.constants.F_OK);
+    } catch (err) {
+      await connection.rollback();
+      return res.status(500).json({ error: "Source file does not exist" });
     }
 
     // Copy the image file from source to destination
@@ -240,11 +376,6 @@ exports.createImage = async (req, res) => {
     connection.release(); // Release the connection back to the pool
   }
 };
-
-
-
-
-// Get all image records with pagination
 exports.getAllStudentsWithPagination = async (req, res) => {
   try {
     const page = parseInt(req.query.page, 10) || 1;
