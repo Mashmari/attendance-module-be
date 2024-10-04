@@ -1,7 +1,7 @@
 const express = require('express');
 const mamSchoolStudentController = require('../controllers/mamSchoolStudentController');
 const multer = require('multer');
-const upload = multer({ storage: multer.memoryStorage() });
+
 const router = express.Router();
 
 router.post('/create', mamSchoolStudentController.createImage);
@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
     }
   });
   
-  // const upload = multer({ storage: storage });
+  const upload = multer({ storage: storage });
 
 
 router.post('/createStudentWithImage', upload.single('image'), mamSchoolStudentController.createStudentWithImage);
