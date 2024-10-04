@@ -138,7 +138,7 @@ exports.getAllRecords = async (req, res) => {
 
         // Add image URLs to each record
         const updatedRows = rows.map(row => {
-            const imageUrl = path.join(row.Image_storage_path);
+            const imageUrl = path.join(row.Image_storage_path, row.Image_filename);
             return {
                 ...row,
                 imageUrl,
